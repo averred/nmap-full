@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# nmap-full
+# Author: Talha Khan <talha@averred.net>, 19/02/2021
+
+display_usage() {
+    echo "$(basename $0) is a simple bash script to quickly scan all TCP ports on a host using nmap then perform a detailed slow scan on the results of the quick scan."
+    echo -e "Usage: $(basename $0) <host>\n"
+}
+
+# Are there any arguments?
+if [[ $# == 0 ]]
+then
+    echo -e "Error: No arguments supplied.\n"
+    display_usage
+    exit 1
+fi
+
+# TODO: Expand functionality with getopts if required
+# Are we looking for help?
+if [[ ( $1 == "-h" ) || ( $1 == "--help" ) ]]
+then
+    display_usage
+    exit 0
+fi
+
+# TODO: Have we supplied a valid host?
+
+# ports = quick nmap scan on all ports | filter lines starting with digits | cut first field with delimiter / | translate \n to , | remove trailing ,
+ports=$(sudo nmap -p- -T4 --min-rate=5000 $1 | grep ^[0-9] | cut -d '/' -f 1 | tr '\n' ',' | sed s/,$//)
+
+if [[ -z $ports ]]
+then
+    echo -e "\nError: No ports were found in the quick scan. Review nmap error if shown.\n"
+    display_usage
+    exit 1
+fi
+
+echo "QR TCP: $ports"
+
+# Slower nmap scan on found ports with service version, default script scan, all output formats with timestamp in filename
+# No OS detection as we should not be scanning any closed ports; unreliable signature
+sudo nmap -p$ports -T4 -sV -sC -oA $1_$(date +"%Y%m%d_%H%M%S") $1
